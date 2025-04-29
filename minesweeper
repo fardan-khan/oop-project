@@ -1,0 +1,178 @@
+package Project;
+
+import java.awt.*;
+
+abstract class GameObject {
+    protected int x, y;
+    public GameObject(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+    public abstract void draw(Graphics g);
+
+}
+
+class Cell extends GameObject {
+    private boolean bomb;
+    private boolean revealed;
+    private boolean flagged;
+    private int nearbyBombs;
+    public static final int SIZE = 50;
+
+    public Cell(int x, int y) {
+        super(x, y);
+        this.bomb = false;
+        this.revealed = false;
+        this.flagged = false;
+        this.nearbyBombs = 0;
+    }
+
+    public void setBomb() {
+        this.bomb = true;
+    }
+    public boolean isBomb() {
+        return bomb;
+    }
+    public void reveal() {
+        this.revealed = true;
+    }
+    public boolean isRevealed() {
+        return revealed;
+    }
+    public void toggleFlag() {
+        this.flagged = !this.flagged;
+    }
+    public boolean isFlagged() {
+        return flagged;
+    }
+    public void setNearbyBombs(int count) {
+        this.nearbyBombs = count;
+    }
+    public int getNearbyBombs() {
+        return nearbyBombs;
+    }
+
+    @Override
+    public void draw(Graphics g) {
+        int px = x * SIZE;
+        int py = y * SIZE;
+        g.setColor(Color.BLACK);
+        g.drawRect(px, py, SIZE, SIZE);
+
+        if (revealed) {
+            g.setColor(Color.WHITE);
+            g.fillRect(px + 1, py + 1, SIZE - 2, SIZE - 2);
+            if (bomb) {
+                g.setColor(Color.RED);
+                g.fillOval(px + 15, py + 15, 20, 20);
+            } else if (nearbyBombs > 0) {
+                g.setColor(Color.BLUE);
+                g.drawString(String.valueOf(nearbyBombs), px + 20, py + 30);
+            }
+        } else if (flagged) {
+            g.setColor(Color.RED);
+            g.drawString("F", px + 20, py + 30);
+        }
+    }
+}
+
+class Grid {
+    private Cell[][] cells;
+    private int rows, cols;
+    private int bombCount = 20;
+
+    public Grid(int rows, int cols) {
+        this.rows = rows;
+        this.cols = cols;
+        cells = new Cell[rows][cols];
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                cells[i][j] = new Cell(i, j);
+        placeBombs();
+        calculateNearbyBombs();
+    }
+
+    private void placeBombs() {
+        int placed = 0;
+        while (placed < bombCount) {
+            int i = (int)(Math.random() * rows);
+            int j = (int)(Math.random() * cols);
+            if (!cells[i][j].isBomb()) {
+                cells[i][j].setBomb();
+                placed++;
+            }
+        }
+    }
+
+    private void calculateNearbyBombs() {
+        for (int i = 0; i < rows; i++) {
+            for (int j = 0; j < cols; j++) {
+                if (!cells[i][j].isBomb()) {
+                    int count = 0;
+                    for (int dx = -1; dx <= 1; dx++) {
+                        for (int dy = -1; dy <= 1; dy++) {
+                            int ni = i + dx;
+                            int nj = j + dy;
+                            if (isValid(ni, nj) && cells[ni][nj].isBomb())
+                                count++;
+                        }
+                    }
+                    cells[i][j].setNearbyBombs(count);
+                }
+            }
+        }
+    }
+
+    private boolean isValid(int i, int j) {
+        return i >= 0 && i < rows && j >= 0 && j < cols;
+    }
+
+    public Cell getCell(int x, int y) {
+        return isValid(x, y) ? cells[x][y] : null;
+    }
+
+    public void draw(Graphics g) {
+        for (int i = 0; i < rows; i++)
+            for (int j = 0; j < cols; j++)
+                cells[i][j].draw(g);
+    }
+}
+
+
+class Main {
+    public static void main(String[] args) {
+        Grid grid = new Grid(5, 5);
+
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                Cell cell = grid.getCell(i, j);
+                if (cell.isBomb()) {
+                    System.out.print(" B ");
+                } else {
+                    System.out.print(" " + cell.getNearbyBombs() + " ");
+                }
+            }
+            System.out.println(); // move to next line after each row
+        }
+
+        System.out.println("Testing reveal and flagging:");
+
+        grid.getCell(0, 0).reveal();
+        grid.getCell(1, 1).reveal();
+        grid.getCell(2, 2).toggleFlag();
+
+        for (int i = 0; i < 5; i++) {
+            for (int j = 0; j < 5; j++) {
+                Cell cell = grid.getCell(i, j);
+                if (cell.isRevealed()) {
+                    System.out.print("[R] ");
+                } else if (cell.isFlagged()) {
+                    System.out.print("[F] ");
+                } else {
+                    System.out.print("[ ] ");
+                }
+            }
+            System.out.println();
+        }
+    }
+}
